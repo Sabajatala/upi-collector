@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin | UPI Control</title>
   <style>
-    body {font-family:system-ui,sans-serif;background:#1a1a2e;color:#eee;margin:0;padding:40px;display:flex;align-items:center;justify-content:center;min-height:100vh}
-    .panel{background:#16213e;padding:30px;border-radius:15px;width:100%;max-width:400px;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
-    input{width:100%;padding:12px;margin:10px 0;border-radius:8px;border:none;background:#0f3460;color:#eee;box-sizing:border-box}
-    button{width:100%;padding:12px;background:#e94560;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:bold;margin:10px 0}
+    body{font-family:system-ui,sans-serif;background:#1a1a2e;color:#eee;margin:0;padding:40px;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .panel{background:#16213e;padding:30px;border-radius:15px;max-width:400px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+    input,button{width:100%;padding:12px;margin:10px 0;border-radius:8px;border:none;box-sizing:border-box}
+    input{background:#0f3460;color:#eee}
+    button{background:#e94560;color:white;font-weight:bold;cursor:pointer}
     button:hover{background:#c4456d}
     .current{background:#0f3460;padding:15px;border-radius:8px;margin-top:20px}
     #form{display:none}
@@ -24,10 +25,9 @@
 
     <div id="form">
       <h3>Update Payment Details</h3>
-      <input type="text" id="upi" placeholder="Your UPI ID (e.g. freelancer@paytm)">
-      <input type="number" id="amount" placeholder="Default Amount (e.g. 500)" min="1">
+      <input type="text" id="upi" placeholder="Your UPI ID">
+      <input type="number" id="amount" placeholder="Default Amount" min="1">
       <button onclick="update()">Update & Generate New QR</button>
-
       <div class="current">
         <strong>Current:</strong><br>
         UPI: <span id="currUpi">-</span><br>
@@ -37,11 +37,8 @@
   </div>
 
   <script>
-    const ADMIN_PASS = '5566';  // ← Your current password
-
-    function showError(msg) {
-      document.getElementById('error').textContent = msg;
-    }
+    const ADMIN_PASS = '5566';
+    function showError(msg) { document.getElementById('error').textContent = msg; }
 
     async function login() {
       if (document.getElementById('pass').value === ADMIN_PASS) {
@@ -49,47 +46,34 @@
         document.getElementById('pass').disabled = true;
         document.querySelector('button').style.display = 'none';
         await loadCurrent();
-      } else {
-        showError('Wrong password!');
-      }
+      } else showError('Wrong password!');
     }
 
     async function loadCurrent() {
       try {
         const res = await fetch('/api/payment');
-        if (!res.ok) throw new Error('API not responding');
         const data = await res.json();
         document.getElementById('currUpi').textContent = data.upi;
         document.getElementById('currAmt').textContent = data.amount;
         document.getElementById('upi').value = data.upi;
         document.getElementById('amount').value = data.amount;
         showError('');
-      } catch (e) {
-        showError('Cannot connect to server');
-      }
+      } catch { showError('Server not responding'); }
     }
 
     async function update() {
       const upi = document.getElementById('upi').value.trim();
       const amount = document.getElementById('amount').value;
-      if (!upi || !amount) return showError('Fill both fields');
-
-      try {
-        const res = await fetch('/api/payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ upi, amount, pass: ADMIN_PASS })
-        });
-
-        if (res.ok) {
-          alert('Updated successfully! User page will refresh in seconds');
-          await loadCurrent();
-        } else {
-          showError('Wrong password or server error');
-        }
-      } catch (e) {
-        showError('Update failed – check internet');
-      }
+      if (!upi || !amount) return showError('Fill all fields');
+      const res = await fetch('/api/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upi, amount, pass: ADMIN_PASS })
+      });
+      if (res.ok) {
+        alert('Updated successfully!');
+        loadCurrent();
+      } else showError('Update failed');
     }
   </script>
 </body>
