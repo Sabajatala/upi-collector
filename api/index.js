@@ -3,29 +3,30 @@ let paymentData = {
   amount: "500"
 };
 
-const ADMIN_PASS = "5566"; // Change this to your strong password
+const ADMIN_PASS = "5566"; // Change later to stronger password
 
 export default function handler(req, res) {
-  // Allow requests from anywhere
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
   if (req.method === 'POST') {
-    const { upi, amount, pass, utr } = req.body || {};
-
-    if (pass !== ADMIN_PASS) {
+    const body = req.body || {};
+    if (body.pass !== ADMIN_PASS) {
       return res.status(403).json({ error: "Wrong password" });
     }
-
-    if (upi && amount) {
-      paymentData = { upi, amount };
+    if (body.upi && body.amount) {
+      paymentData = { upi: body.upi, amount: body.amount };
       return res.json({ success: true });
     }
   }
 
-  // GET request
-  const override = req.query.amount;
-  const finalAmount = override || paymentData.amount;
+  const overrideAmount = req.query.amount;
+  const finalAmount = overrideAmount || paymentData.amount;
 
   res.status(200).json({
     upi: paymentData.upi,
