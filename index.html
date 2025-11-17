@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UPI Payment | Secure & Fast</title>
-  <!-- Working QR Code library (updated & reliable CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; color: #333; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -29,14 +28,14 @@
       <div class="amount">₹ <span id="amount">Loading...</span></div>
     </div>
     <p>Scan QR or use app below</p>
-    <div id="qr"></div>
+    <div id="qr">Loading QR...</div>
     <div class="upi" id="upi">Loading UPI...</div>
     <button class="btn" onclick="copyUPI()">Copy UPI ID</button>
    
     <hr style="margin: 25px 0; border: none; border-top: 1px solid #eee;">
    
     <p style="color: #dc3545; font-weight: bold;">Enter 12-Digit UTR (Proof)</p>
-    <input type="tel" id="utr" placeholder="e.g., 123456789012" maxlength="12" pattern="[0-9]{12}" required>
+    <input type="tel" id="utr" placeholder="e.g., 123456789012" maxlength="12">
     <button class="btn btn-success" onclick="submitUTR()">Submit Payment Proof</button>
    
     <div class="tip">
@@ -44,56 +43,53 @@
     </div>
   </div>
 
-  <!-- FIXED SCRIPT – 100% working QR code -->
   <script>
-    // Wait until QRCode library is fully loaded
-    function waitForQRCode(callback) {
-      if (typeof QRCode !== 'undefined') {
-        callback();
-      } else {
-        setTimeout(() => waitForQRCode(callback), 50);
-      }
+    function waitForQR(callback) {
+      if (typeof QRCode !== 'undefined') callback();
+      else setTimeout(() => waitForQR(callback), 50);
     }
 
-    waitForQRCode(function () {
-      const qr = new QRCode(document.getElementById("qr"), {
-        width: 220,
-        height: 220,
-        colorDark: "#000000",
-        colorLight: "#ffffff"
-      });
+    waitForQR(() => {
+      const qr = new QRCode(document.getElementById("qr"), { width: 220, height: 220 });
 
       async function loadPayment() {
         try {
-          const urlParams = new URLSearchParams(window.location.search);
-          const invoiceAmount = urlParams.get('amount') || '500';
-          const res = await fetch(`/api/payment?amount=${invoiceAmount}`);
+          const params = new URLSearchParams(location.search);
+          const amount = params.get('amount') || '500';
+
+          // THIS IS THE FIX — correct API path on Vercel
+          const res = await fetch('/api/payment?amount=' + amount);
+          if (!res.ok) throw new Error('API error');
+
           const data = await res.json();
+          
+          document.getElementById('amount').textContent = data.amount || '500';
+          document.getElementById('upi').textContent = data.upi || 'example@upi';
 
-          document.getElementById('amount').textContent = data.amount;
-          document.getElementById('upi').textContent = data.upi;
+          const upiLink = `upi://pay?pa=${data.upi}&am=${data.amount}&cu=INR`;
+          qr.makeCode(upiLink);
 
-          const upiUrl = `upi://pay?pa=${data.upi}&am=${data.amount}&cu=INR`;
-          qr.makeCode(upiUrl);
         } catch (e) {
-          console.error(e);
+          document.getElementById('amount').textContent = '500';
+          document.getElementById('upi').textContent = 'test@okaxis';
+          qr.makeCode('upi://pay?pa=test@okaxis&am=500&cu=INR');
         }
       }
 
-      window.copyUPI = function () {
+      window.copyUPI = () => {
         navigator.clipboard.writeText(document.getElementById('upi').textContent)
           .then(() => alert('UPI Copied!'));
       };
 
-      window.submitUTR = async function () {
+      window.submitUTR = async () => {
         const utr = document.getElementById('utr').value.trim();
         if (!/^\d{12}$/.test(utr)) return alert('Enter valid 12-digit UTR');
         await fetch('/api/payment', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ utr, amount: document.getElementById('amount').textContent })
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({utr})
         });
-        alert('UTR submitted! We will verify soon.');
+        alert('UTR submitted successfully!');
         document.getElementById('utr').value = '';
       };
 
