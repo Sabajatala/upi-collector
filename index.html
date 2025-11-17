@@ -6,7 +6,7 @@
   <title>UPI Payment | Secure & Fast</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <style>
-    body {font-family:system-ui,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);margin:0;padding:20px;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#333}
+    body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);margin:0;padding:20px;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#333}
     .card{background:white;border-radius:20px;padding:30px;max-width:380px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,0.1);text-align:center}
     .header{color:#764ba2;margin-bottom:20px}
     .header h1{margin:0;font-size:1.8em}
@@ -19,7 +19,7 @@
     .btn-success:hover{background:#218838}
     input{width:100%;padding:12px;margin:10px 0;border:1px solid #ddd;border-radius:8px;font-size:1em;box-sizing:border-box}
     .tip{font-size:0.85em;color:#666;margin-top:15px;line-height:1.4}
-    .error{color:#d32f2f;font-size:0.9em;margin-top:10px}
+    .error{color:#d32f2f;margin-top:10px}
   </style>
 </head>
 <body>
@@ -29,16 +29,13 @@
       <div class="amount">₹ <span id="amount">Loading...</span></div>
     </div>
     <p>Scan QR or use app below</p>
-    <div id="qr">Loading QR code...</div>
+    <div id="qr">Loading QR...</div>
     <div class="upi" id="upi">Loading UPI...</div>
     <button class="btn" onclick="copyUPI()">Copy UPI ID</button>
-
     <hr style="margin:25px 0;border:none;border-top:1px solid #eee">
-
     <p style="color:#dc3545;font-weight:bold">Enter 12-Digit UTR (Proof)</p>
     <input type="tel" id="utr" placeholder="e.g., 123456789012" maxlength="12">
     <button class="btn btn-success" onclick="submitUTR()">Submit Payment Proof</button>
-
     <div class="tip">
       <strong>Tip:</strong> Complete payment in your UPI app (PhonePe/GPay), then submit UTR here. We'll confirm in 5 mins!
     </div>
@@ -46,81 +43,39 @@
   </div>
 
   <script>
-    // Show errors clearly on screen
-    function showError(msg) {
-      console.error("UPI Error:", msg);
-      document.getElementById('error').textContent = "Warning: " + msg;
-    }
-
-    function waitForQR(callback) {
-      if (typeof QRCode !== 'undefined') callback();
-      else setTimeout(() => waitForQR(callback), 50);
-    }
-
+    function waitForQR(cb) { typeof QRCode !== 'undefined' ? cb() : setTimeout(() => waitForQR(cb), 50); }
     waitForQR(() => {
       const qr = new QRCode(document.getElementById("qr"), { width: 220, height: 220 });
 
-      async function loadPayment() {
+      async function load() {
         try {
-          const params = new URLSearchParams(location.search);
-          const amount = params.get('amount') || '500';
-
-          console.log("Fetching from /api/payment?amount=" + amount);
-          const res = await fetch('/api/payment?amount=' + amount, { cache: "no-store" });
-
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status} – ${res.statusText}`);
-          }
-
+          const amount = new URLSearchParams(location.search).get('amount') || '';
+          const res = await fetch('/api/payment' + (amount ? `?amount=${amount}` : ''));
+          if (!res.ok) throw new Error("API failed");
           const data = await res.json();
-          console.log("API Response:", data);
-
-          if (!data.upi || !data.amount) {
-            throw new Error("Invalid data from server");
-          }
-
           document.getElementById('amount').textContent = data.amount;
           document.getElementById('upi').textContent = data.upi;
           document.getElementById('error').textContent = '';
-
-          const upiLink = `upi://pay?pa=${data.upi}&am=${data.amount}&cu=INR`;
-          qr.makeCode(upiLink);
-
-        } catch (err) {
-          showError("Using demo mode – Admin not set yet");
-          console.warn("Fallback mode activated");
-
-          // Fallback demo values
+          qr.makeCode(`upi://pay?pa=${data.upi}&am=${data.amount}&cu=INR`);
+        } catch {
           document.getElementById('amount').textContent = '500';
           document.getElementById('upi').textContent = 'demo@okaxis';
+          document.getElementById('error').textContent = 'Demo mode (admin not set)';
           qr.makeCode('upi://pay?pa=demo@okaxis&am=500&cu=INR');
         }
       }
 
-      window.copyUPI = () => {
-        navigator.clipboard.writeText(document.getElementById('upi').textContent)
-          .then(() => alert('UPI ID Copied!'));
-      };
-
-      window.submitUTR = async () => {
+      window.copyUPI = () => navigator.clipboard.writeText(document.getElementById('upi').textContent).then(() => alert("Copied!"));
+      window.submitUTR = () => {
         const utr = document.getElementById('utr').value.trim();
-        if (!/^\d{12}$/.test(utr)) return alert('Enter valid 12-digit UTR');
-
-        try {
-          await fetch('/api/payment', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({utr})
-          });
-          alert('UTR submitted successfully!');
-        } catch {
-          alert('UTR saved locally (admin will check later)');
-        }
+        if (!/^\d{12}$/.test(utr)) return alert("Enter valid 12-digit UTR");
+        fetch('/api/payment', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({utr}) })
+          .then(() => alert("UTR submitted!")).catch(() => alert("Saved locally"));
         document.getElementById('utr').value = '';
       };
 
-      loadPayment();
-      setInterval(loadPayment, 10000);
+      load();
+      setInterval(load, 10000);
     });
   </script>
 </body>
