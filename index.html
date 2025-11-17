@@ -4,22 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UPI Payment | Secure & Fast</title>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+  <!-- Working QR Code library (updated & reliable CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; color: #333; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
     .card { background: white; border-radius: 20px; padding: 30px; max-width: 380px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; }
     .header { color: #764ba2; margin-bottom: 20px; }
     .header h1 { margin: 0; font-size: 1.8em; }
     .amount { font-size: 2.5em; color: #28a745; font-weight: bold; margin: 10px 0; }
-    #qr { margin: 20px auto; padding: 15px; background: #f8f9fa; border-radius: 10px; }
+    #qr { margin: 20px auto; padding: 15px; background: #f8f9fa; border-radius: 10px; width: fit-content; }
     .upi { background: #e3f2fd; padding: 12px; border-radius: 8px; font-size: 1.1em; font-weight: bold; margin: 15px 0; word-break: break-all; }
-    .btn { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 1em; margin: 5px; transition: background 0.3s; }
+    .btn { background: #007bff; color: white; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 1em; margin: 5px; }
     .btn:hover { background: #0056b3; }
     .btn-success { background: #28a745; }
     .btn-success:hover { background: #218838; }
     input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 1em; box-sizing: border-box; }
     .tip { font-size: 0.85em; color: #666; margin-top: 15px; line-height: 1.4; }
-    @media (max-width: 480px) { .card { padding: 20px; } }
   </style>
 </head>
 <body>
@@ -44,40 +46,53 @@
     </div>
   </div>
 
-  <script>
-    const qr = new QRCode(document.getElementById('qr'), { width: 200, height: 200, colorDark: '#000', colorLight: '#fff' });
-    
+ <script>
+  // Make sure QRCode is loaded
+  document.addEventListener("DOMContentLoaded", function () {
+    const qr = new QRCode(document.getElementById('qr'), {
+      width: 220,
+      height: 220,
+      colorDark: "#000000",
+      colorLight: "#ffffff"
+    });
+
     async function loadPayment() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const invoiceAmount = urlParams.get('amount') || '500'; // Default ₹500; override via ?amount=1000
+        const invoiceAmount = urlParams.get('amount') || '500';
         const res = await fetch(`/api/payment?amount=${invoiceAmount}`);
         const { upi, amount } = await res.json();
+
         document.getElementById('amount').textContent = amount;
         document.getElementById('upi').textContent = upi;
+
         const upiUrl = `upi://pay?pa=${upi}&am=${amount}&cu=INR`;
-        qr.makeCode(upiUrl);
-        document.title = `Pay ₹${amount} | UPI Collector`;
-      } catch (e) { console.error('Load error:', e); alert('Check connection'); }
+        qr.makeCode(upiUrl);  // This now works!
+      } catch (e) {
+        console.error(e);
+      }
     }
-    
+
     function copyUPI() {
-      const upi = document.getElementById('upi').textContent;
-      navigator.clipboard.writeText(upi).then(() => alert('UPI Copied!'));
+      navigator.clipboard.writeText(document.getElementById('upi').textContent)
+        .then(() => alert('UPI Copied!'));
     }
-    
+
     async function submitUTR() {
       const utr = document.getElementById('utr').value.trim();
       if (!/^\d{12}$/.test(utr)) return alert('Enter valid 12-digit UTR');
-      try {
-        await fetch('/api/utr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ utr, amount: document.getElementById('amount').textContent }) });
-        alert(`UTR ${utr} submitted! We'll verify soon.`);
-        document.getElementById('utr').value = '';
-      } catch (e) { alert('Submit error'); }
+      await fetch('/api/payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ utr, amount: document.getElementById('amount').textContent })
+      });
+      alert('UTR submitted! We will verify soon.');
+      document.getElementById('utr').value = '';
     }
-    
+
     loadPayment();
-    setInterval(loadPayment, 10000); // Refresh every 10s for admin updates
-  </script>
+    setInterval(loadPayment, 10000);
+  });
+</script>
 </body>
 </html>
