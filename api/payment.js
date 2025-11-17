@@ -1,7 +1,7 @@
 // Vercel auto-runs this as /api/payment (GET/POST)
 let paymentData = { upi: 'yourupi@okaxis', amount: '500' }; // Initial values
 let utrs = []; // Simple array for UTR proofs (in real: use free DB)
-const ADMIN_PASS = 'your-secret-2025'; // Match admin.html
+const ADMIN_PASS = '5566'; // Match admin.html
 
 export default function handler(req, res) {
   if (req.method === 'POST') {
