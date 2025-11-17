@@ -35,7 +35,7 @@
   </div>
 
   <script>
-    const ADMIN_PASS = '5566'; // CHANGE THIS IMMEDIATELY!
+    const ADMIN_PASS = process.env.ADMIN_PASS || 'fallback-password-only-for-local';
     
     async function login() {
       if (document.getElementById('pass').value === ADMIN_PASS) {
