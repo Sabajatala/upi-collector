@@ -51,7 +51,7 @@
 
     async function loadCurrent() {
       try {
-        const res = await fetch('/api/payment');
+        const res = await fetch('/api/index');
         const data = await res.json();
         document.getElementById('currUpi').textContent = data.upi;
         document.getElementById('currAmt').textContent = data.amount;
